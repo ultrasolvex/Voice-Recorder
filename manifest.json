@@ -1,0 +1,21 @@
+{
+  "name": "Voice Recorder",
+  "short_name": "VoiceRec",
+  "description": "تطبيق لتسجيل الصوت وتحويله لنص",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#030617",
+  "theme_color": "#030617",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "mic.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

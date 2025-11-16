@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Voice Recorder</title>
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#030617" />
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<style>
+:root{
+  --bg:#030617;
+  --card:#070b1c;
+  --accent:#6ee7b7;
+  --purple:#4b0082;
+  --purple-dark:#2d004d;
+  --aqua:#71f7ff;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  font-family:Tahoma, Arial, sans-serif;
+  background:var(--bg);
+  color:#e6eef6;
+  padding:22px;
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  -webkit-tap-highlight-color: transparent;
+}
+.card{
+  width:100%;
+  max-width:750px;
+  padding:22px;
+  background:var(--card);
+  border-radius:14px;
+  box-shadow:0 0 40px rgba(0,0,0,.6);
+}
+.btn{
+  background:var(--purple-dark);
+  border:2px solid var(--purple);
+  padding:14px;
+  width:100%;
+  text-align:center;
+  font-size:19px;
+  border-radius:12px;
+  color:var(--aqua);
+  cursor:pointer;
+  font-weight:700;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  outline: none;
+  user-select: none;
+}
+.btn:hover, .btn:active, .btn:focus {
+  background: var(--purple-dark);
+  transform: none;
+  box-shadow: none;
+}
+.transcript{
+  background:#0b0f24;
+  padding:16px;
+  border-radius:10px;
+  min-height:160px;
+  white-space:pre-wrap;
+  color:#d9e7ff;
+  margin-top:12px;
+  border:1px solid #1a223d;
+}
+.row-btns{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.mini-btn{
+  flex:1;
+  padding:12px 10px;
+  background:var(--purple-dark);
+  border:1px solid var(--purple);
+  border-radius:10px;
+  cursor:pointer;
+  color:var(--aqua);
+  font-weight:700;
+  text-align:center;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  appearance:none;
+  outline:none;
+  user-select:none;
+}
+.mini-btn:hover, .mini-btn:active, .mini-btn:focus {
+  background: var(--purple-dark);
+  transform: none;
+  box-shadow: none;
+}
+.notify {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.92);
+  color: var(--aqua);
+  padding: 14px 30px;
+  border-radius: 12px;
+  font-size: 16px;
+  border: 1px solid var(--purple);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .3s, visibility .3s;
+  pointer-events: none;
+  z-index: 1000;
+  font-weight: 700;
+  box-shadow: 0 6px 25px rgba(0,0,0,.8);
+}
+.notify.show {
+  opacity: 1;
+  visibility: visible;
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <button id="recordBtn" class="btn">Start Recording</button>
+  <div class="transcript" id="transcript">No text yet.</div>
+  <div class="row-btns">
+    <div id="clearBtn" class="mini-btn">Clear</div>
+    <div id="copyBtn" class="mini-btn">Copy</div>
+  </div>
+</div>
+<div id="notify" class="notify"></div>
+
+<script>
+const recordBtn = document.getElementById('recordBtn');
+const transcriptEl = document.getElementById('transcript');
+const clearBtn = document.getElementById('clearBtn');
+const copyBtn = document.getElementById('copyBtn');
+const notify = document.getElementById('notify');
+
+let recognizing = false;
+let finalTranscript = '';
+let lastText = '';
+
+function showNotify(msg){
+  notify.textContent = msg;
+  notify.classList.remove('show');
+  void notify.offsetWidth;
+  notify.classList.add('show');
+  setTimeout(() => notify.classList.remove('show'), 2500);
+}
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+
+if(SpeechRecognition){
+  recognition = new SpeechRecognition();
+  recognition.lang = 'ar-SA';
+  recognition.interimResults = false;
+  recognition.continuous = false;
+
+  recognition.onstart = () => {
+    recognizing = true;
+    recordBtn.textContent = 'Stop Recording';
+  };
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript.trim();
+    if(transcript && transcript !== lastText){
+      finalTranscript += transcript + "\n";
+      lastText = transcript;
+      transcriptEl.textContent = finalTranscript;
+    }
+  };
+
+  recognition.onend = () => {
+    recognizing = false;
+    recordBtn.textContent = 'Start Recording';
+  };
+}
+
+recordBtn.addEventListener('click', () => {
+  if(!recognition) return showNotify("Speech recognition not supported.");
+  if(!recognizing){
+    recognition.start();
+    transcriptEl.textContent = 'Listening...';
+  } else {
+    recognition.stop();
+  }
+});
+
+clearBtn.addEventListener('click', () => {
+  finalTranscript = '';
+  lastText = '';
+  transcriptEl.textContent = 'No text yet.';
+  showNotify("Text cleared.");
+});
+
+function fallbackCopy(text){
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+}
+
+copyBtn.addEventListener('click', async () => {
+  const text = transcriptEl.textContent.trim();
+  if(!text || text === "Listening..." || text === "No text yet.") return showNotify("Nothing to copy.");
+  try {
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(text);
+      showNotify("Copied successfully!");
+    } else {
+      fallbackCopy(text);
+      showNotify("Copied successfully!");
+    }
+  } catch {
+    fallbackCopy(text);
+    showNotify("Copied!");
+  }
+});
+
+// تسجيل Service Worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('service-worker.js')
+  .then(() => console.log('Service Worker registered'))
+  .catch(err => console.log('Service Worker failed:', err));
+}
+</script>
+</body>
+</html>
